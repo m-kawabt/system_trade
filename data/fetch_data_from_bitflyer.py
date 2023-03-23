@@ -20,7 +20,7 @@ class chart_1m:
 
     async def get_data(self):
         uri = 'wss://ws.lightstream.bitflyer.com/json-rpc'
-        query = {'method': 'subscribe', 'params': {'channel': 'lightning_ticker_FX_BTC_JPY'}}
+        query = {'method': 'subscribe', 'params': {'channel': 'lightning_executions_FX_BTC_JPY'}}
         while True:
             async with aiohttp.ClientSession() as session:
                 async with session.ws_connect(uri, receive_timeout=60) as client:
@@ -32,18 +32,21 @@ class chart_1m:
                             print('response: ' + str(response))
                             break
                         data = json.loads(response[1])['params']['message']
-                        data = {'timestamp': dt.strptime(data['timestamp'][:19], '%Y-%m-%dT%H:%M:%S'), 'ltp': data['ltp']}
-                        data['timestamp'] = data['timestamp'] + td(hours=9)
-                        now_minute = data['timestamp'].replace(second=0, microsecond=0)
-                        if pre_tick_minute != now_minute and len(now_minute_price_list) > 0:
-                            ohlc = self.make_ohlc(now_minute_price_list)
-                            now_minute_price_list = []
-                            self.realtime_data.loc[pre_tick_minute] = list(ohlc) # type: ignore
-                            with open('raw.csv', 'a', newline='') as f:
-                                writer = csv.writer(f)
-                                writer.writerow([pre_tick_minute] + list(ohlc))
-                        now_minute_price_list.append(data[('ltp')])
-                        pre_tick_minute = now_minute
+                        # 複数の約定が配列で配信される
+                        for d in data:
+                            d = {'exec_date': dt.strptime(d['exec_date'][:19], '%Y-%m-%dT%H:%M:%S'), 'price': d['price']}
+                            d['exec_date'] = d['exec_date'] + td(hours=9)
+                            now_minute = d['exec_date'].replace(second=0, microsecond=0)
+                            if pre_tick_minute != now_minute and len(now_minute_price_list) > 0:
+                                ohlc = self.make_ohlc(now_minute_price_list)
+                                now_minute_price_list = []
+                                self.realtime_data.loc[pre_tick_minute] = list(ohlc) # type: ignore
+                                print(ohlc)
+                                with open('raw.csv', 'a', newline='') as f:
+                                    writer = csv.writer(f)
+                                    writer.writerow([pre_tick_minute] + list(ohlc))
+                            now_minute_price_list.append(d[('price')])
+                            pre_tick_minute = now_minute
 
     async def make_chart(self):
         while True:
