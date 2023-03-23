@@ -12,7 +12,7 @@ import mplfinance as mpf
 
 class chart_1m:
     def __init__(self):
-        self.realtime_data = pd.DataFrame(columns=['Open', 'High', 'Low', 'Close'])
+        self.realtime_data = pd.DataFrame(columns=['Open', 'High', 'Low', 'Close', 'Volume'])
         self.realtime_data.index.name = 'Time'
         loop = asyncio.get_event_loop()
         tasks = asyncio.wait([self.get_data(), self.make_chart()])
@@ -27,6 +27,7 @@ class chart_1m:
                     await asyncio.wait([client.send_str(json.dumps(query))])
                     pre_tick_minute = dt.now().replace(second=0, microsecond=0)
                     now_minute_price_list = []
+                    volume = 0.0
                     async for response in client:
                         if response.type != aiohttp.WSMsgType.TEXT:
                             print('response: ' + str(response))
@@ -34,33 +35,35 @@ class chart_1m:
                         data = json.loads(response[1])['params']['message']
                         # 複数の約定が配列で配信される
                         for d in data:
-                            d = {'exec_date': dt.strptime(d['exec_date'][:19], '%Y-%m-%dT%H:%M:%S'), 'price': d['price']}
+                            d = {'exec_date': dt.strptime(d['exec_date'][:19], '%Y-%m-%dT%H:%M:%S'), 'price': d['price'], 'size': d['size']}
                             d['exec_date'] = d['exec_date'] + td(hours=9)
                             now_minute = d['exec_date'].replace(second=0, microsecond=0)
                             if pre_tick_minute != now_minute and len(now_minute_price_list) > 0:
-                                ohlc = self.make_ohlc(now_minute_price_list)
+                                ohlcv = self.make_ohlcv(now_minute_price_list, volume)
+                                print(ohlcv)
                                 now_minute_price_list = []
-                                self.realtime_data.loc[pre_tick_minute] = list(ohlc) # type: ignore
-                                print(ohlc)
-                                with open('raw.csv', 'a', newline='') as f:
+                                volume = 0.0
+                                with open('data/raw.csv', 'a', newline='') as f:
                                     writer = csv.writer(f)
-                                    writer.writerow([pre_tick_minute] + list(ohlc))
+                                    writer.writerow([pre_tick_minute] + list(ohlcv))
+                                self.realtime_data.loc[pre_tick_minute] = list(ohlcv) # type: ignore
                             now_minute_price_list.append(d[('price')])
+                            volume += float(d['size'])
                             pre_tick_minute = now_minute
 
     async def make_chart(self):
         while True:
             if not self.realtime_data.empty:
-                mpf.plot(self.realtime_data, type='candle', savefig='data/realtime_chart.png')
+                mpf.plot(self.realtime_data, type='candle', volume=True, savefig='realtime_chart.png')
             await asyncio.sleep(5)
 
 
-    def make_ohlc(self, price_list):
+    def make_ohlcv(self, price_list, volume):
         open = price_list[0]
         high = max(price_list)
         low = min(price_list)
         close = price_list[-1]
-        return open, high, low, close
+        return open, high, low, close, volume
 
 
 if __name__ == '__main__':
