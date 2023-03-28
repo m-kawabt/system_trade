@@ -40,7 +40,7 @@ class chart_1m:
                             now_minute = d['exec_date'].replace(second=0, microsecond=0)
                             if pre_tick_minute != now_minute and len(now_minute_price_list) > 0:
                                 ohlcv = self.make_ohlcv(now_minute_price_list, volume)
-                                print(ohlcv)
+                                print(pre_tick_minute, ohlcv)
                                 now_minute_price_list = []
                                 volume = 0.0
                                 with open('data/raw.csv', 'a', newline='') as f:
@@ -52,7 +52,7 @@ class chart_1m:
                             pre_tick_minute = now_minute
 
     async def make_chart(self):
-        while True:
+        while False:
             if not self.realtime_data.empty:
                 mpf.plot(self.realtime_data, type='candle', volume=True, savefig='realtime_chart.png')
             await asyncio.sleep(5)
