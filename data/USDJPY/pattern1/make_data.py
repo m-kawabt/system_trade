@@ -4,7 +4,6 @@ import os
 from datetime import datetime as dt
 from datetime import timedelta as td
 
-
 file_path = '/raidc/m-kawabt/system_trade/data/USDJPY/raw'
 files = sorted(glob.glob(os.path.join(file_path, '*')))
 dest_gt_file_path = '/raidc/m-kawabt/system_trade/data/USDJPY/pattern1/ground_truth.csv'
