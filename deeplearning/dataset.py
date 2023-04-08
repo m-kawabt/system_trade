@@ -1,15 +1,16 @@
 from datetime import datetime as dt
 from datetime import timedelta as td
+import numpy as np
 
 import pandas as pd
+import torch
 from torch.utils import data
 
 
 class FXDataset(data.Dataset):
-    def __init__(self, gt_file_path, data_file_path, transformer):
+    def __init__(self, gt_file_path, data_file_path):
         self.gt_df = pd.read_csv(gt_file_path, header=None)
         self.data_df = pd.read_csv(data_file_path, header=None, index_col=0)
-        self.data_transformer = transformer()
 
     def __len__(self):
         return len(self.gt_df)
@@ -21,23 +22,29 @@ class FXDataset(data.Dataset):
         gt = self.gt_df.iloc[index]
         start_time = dt.strptime(gt[0], '%Y-%m-%d %H:%M:%S')
         end_time = start_time + td(minutes=179)
-        label = gt[1]
-        input = self.data_df.loc[start_time.strftime('%Y-%m-%d %H:%M:%S') : end_time.strftime('%Y-%m-%d %H:%M:%S')]
-        print(input)
-        exit(0)
+        target_tensor = torch.tensor(gt[1])
+        input_df = self.data_df.loc[start_time.strftime('%Y-%m-%d %H:%M:%S') : end_time.strftime('%Y-%m-%d %H:%M:%S')]
+        input_tensor = torch.tensor(np.array(input_df))
+        input_tensor_transformed = input_tensor - input_tensor[-1][-1]
+        return input_tensor_transformed, target_tensor
 
-        return input, label
-
-class DataTransformer():
-    def __init__(self) -> None:
-        pass
-    def __call__(self):
-        pass
+# class DataTransformer():
+#     def __init__(self):
+#         pass
+#     def __call__(self):
+#         pass
 
 
 
 if __name__ == '__main__':
     test_gt_file_path = '/raidc/m-kawabt/system_trade/data/USDJPY/pattern1/ground_truth.csv'
     test_data_file_path = '/raidc/m-kawabt/system_trade/data/USDJPY/pattern1/input.csv'
-    dataset = FXDataset(test_gt_file_path, test_data_file_path, DataTransformer)
-    dataset.pull_item(0)
+    dataset = FXDataset(test_gt_file_path, test_data_file_path)
+    train_size = int(dataset.__len__() * 0.8)
+    test_size = dataset.__len__() - train_size
+    train_dataset, test_dataset = data.random_split(dataset, [train_size, test_size], generator=torch.Generator().manual_seed(42))
+    train_data_loader = data.DataLoader(train_dataset, batch_size=4, shuffle=True)
+    test_data_loader = data.DataLoader(test_dataset, batch_size=4, shuffle=True)
+
+    print(test_dataset.indices)
+    print(test_dataset.__getitem__(idx=0)[1])
