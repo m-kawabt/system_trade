@@ -19,13 +19,14 @@ class FXDataset(data.Dataset):
         return self.pull_item(index)
 
     def pull_item(self, index):
+        # index = 361
         gt = self.gt_df.iloc[index]
         start_time = dt.strptime(gt[0], '%Y-%m-%d %H:%M:%S')
         end_time = start_time + td(minutes=179)
-        target_tensor = torch.tensor(gt[1])
+        target_tensor = torch.tensor(gt[1], dtype=torch.float)
         input_df = self.data_df.loc[start_time.strftime('%Y-%m-%d %H:%M:%S') : end_time.strftime('%Y-%m-%d %H:%M:%S')]
-        input_tensor = torch.tensor(np.array(input_df))
-        input_tensor_transformed = input_tensor - input_tensor[-1][-1]
+        input_tensor = torch.tensor(np.array(input_df), dtype=torch.float)
+        input_tensor_transformed = torch.reshape(input_tensor - input_tensor[-1][-1], [1, -1]).squeeze(0)
         return input_tensor_transformed, target_tensor
 
 # class DataTransformer():
@@ -46,5 +47,5 @@ if __name__ == '__main__':
     train_data_loader = data.DataLoader(train_dataset, batch_size=4, shuffle=True)
     test_data_loader = data.DataLoader(test_dataset, batch_size=4, shuffle=True)
 
-    print(test_dataset.indices)
-    print(test_dataset.__getitem__(idx=0)[1])
+    # print(test_dataset.indices)
+    test_dataset.__getitem__(idx=0)[1]
