@@ -91,6 +91,10 @@ def train(max_epoch=100, batch_size=16):
                 # パラメータ更新
                 optimizer.step()
 
+        if ((epoch+1) % 10 == 0):
+            torch.save(net.state_dict(), 'deeplearning/weights/mymodel_' + str(epoch+1) + '.pth')
+            torch.save(net.state_dict(), 'deeplearning/weights/latest.pth')
+
 
         # epochのphaseごとのloss
         print('Epoch_TRAIN_Loss:{:.4f}'.format(epoch_loss))
