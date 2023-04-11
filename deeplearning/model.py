@@ -8,12 +8,12 @@ class MyModel0(nn.Module):
         layers = []
         layers += [nn.Linear(180*4, 1024, bias=True)]
         layers += [nn.ReLU(inplace=True)]
-        layers += [nn.Linear(1024, 1024, bias=True)]
-        layers += [nn.ReLU(inplace=True)]
-        layers += [nn.Linear(1024, 1024, bias=True)]
-        layers += [nn.ReLU(inplace=True)]
-        layers += [nn.Linear(1024, 1024, bias=True)]
-        layers += [nn.ReLU(inplace=True)]
+        # layers += [nn.Linear(1024, 1024, bias=True)]
+        # layers += [nn.ReLU(inplace=True)]
+        # layers += [nn.Linear(1024, 1024, bias=True)]
+        # layers += [nn.ReLU(inplace=True)]
+        # layers += [nn.Linear(1024, 1024, bias=True)]
+        # layers += [nn.ReLU(inplace=True)]
         layers += [nn.Linear(1024, 4, bias=True)]
         self.softmax = nn.Softmax(dim=-1)
 

@@ -32,7 +32,6 @@ def train(max_epoch=100, batch_size=16):
     data_file_path = '/raidc/m-kawabt/system_trade/data/USDJPY/pattern1/input.csv'
     dataset = FXDataset(gt_file_path, data_file_path)
     train_size = int(dataset.__len__() * 0.8)
-    trainsize = 2
     test_size = dataset.__len__() - train_size
     train_dataset, test_dataset = data.random_split(dataset, [train_size, test_size], generator=torch.Generator().manual_seed(42))
     train_dataset, test_dataset = data.random_split(dataset, [train_size, test_size])
@@ -50,9 +49,6 @@ def train(max_epoch=100, batch_size=16):
                 nn.init.constant_(m.bias, 0.0)
     net.modulelist.apply(weights_init)
 
-    # モデルをGPUへ
-    net.to(device)
-
     # 損失関数
     criterion = MyLoss(device=device)
     criterion.to(device=device)
@@ -60,6 +56,9 @@ def train(max_epoch=100, batch_size=16):
     # 最適化手法
     optimizer = optim.SGD(net.parameters(), lr=1e-3, momentum=0.9, weight_decay=5e-4)
 
+    # モデルをGPUへ
+    net = torch.nn.DataParallel(net, device_ids=[0,1,2,3])
+    net.to(device)
 
     for epoch in range(max_epoch):
         print('-------------')
