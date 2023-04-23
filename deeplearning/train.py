@@ -69,7 +69,7 @@ def train(max_epoch=100, batch_size=16):
 
         epoch_loss = 0.0
 
-        for input_data, targets in tqdm(train_data_loader, desc='train', ncols=80):
+        for input_data, result_data, targets in tqdm(train_data_loader, desc='train', ncols=80):
             # データをGPUへ
             input_data = input_data.to(device)
             targets = targets.to(device)

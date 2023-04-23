@@ -52,7 +52,7 @@ class chart_1m:
                             pre_tick_minute = now_minute
 
     async def make_chart(self):
-        while False:
+        while True:
             if not self.realtime_data.empty:
                 mpf.plot(self.realtime_data, type='candle', volume=True, savefig='realtime_chart.png')
             await asyncio.sleep(5)
