@@ -111,8 +111,7 @@ def train(max_epoch=100, batch_size=16, is_tqdm=True):
 
 if __name__ == '__main__':
     args = sys.argv
-    if len(args) > 2:
-        is_tqdm = args[1]
-        print(is_tqdm)
-    exit(0)
+    is_tqdm = True
+    if len(args) > 1:
+        is_tqdm = False
     train(max_epoch=100, batch_size=32, is_tqdm=is_tqdm)

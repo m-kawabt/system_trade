@@ -1,0 +1,1 @@
+nohup python deeplearning/train.py False  > deeplearning/result_log/output0427.log &
