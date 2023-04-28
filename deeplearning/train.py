@@ -1,4 +1,5 @@
 import random
+import sys
 
 import numpy as np
 import torch
@@ -8,11 +9,12 @@ import torch.optim as optim
 from dataset import FXDataset
 from loss import MyLoss
 from model import MyModel0
+from metrics import metrics
 from torch.utils import data
 from tqdm import tqdm
 from torch.nn.utils.clip_grad import clip_grad_value_
 
-def train(max_epoch=100, batch_size=16):
+def train(max_epoch=100, batch_size=16, is_tqdm=True):
     # 乱数を固定
     seed = 22
     random.seed(seed)
@@ -34,9 +36,8 @@ def train(max_epoch=100, batch_size=16):
     train_size = int(dataset.__len__() * 0.8)
     test_size = dataset.__len__() - train_size
     train_dataset, test_dataset = data.random_split(dataset, [train_size, test_size], generator=torch.Generator().manual_seed(42))
-    train_dataset, test_dataset = data.random_split(dataset, [train_size, test_size])
     train_data_loader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    test_data_loader = data.DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
+    # test_data_loader = data.DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
     # モデル
     net = MyModel0()
@@ -57,7 +58,7 @@ def train(max_epoch=100, batch_size=16):
     optimizer = optim.SGD(net.parameters(), lr=1e-3, momentum=0.9, weight_decay=5e-4)
 
     # モデルをGPUへ
-    net = torch.nn.DataParallel(net, device_ids=[0,1,2,3])
+    net = torch.nn.DataParallel(net, device_ids=[0,1])
     net.to(device)
 
     for epoch in range(max_epoch):
@@ -68,8 +69,9 @@ def train(max_epoch=100, batch_size=16):
         # net.train()
 
         epoch_loss = 0.0
+        epoch_metrics = 0.0
 
-        for input_data, result_data, targets in tqdm(train_data_loader, desc='train', ncols=80):
+        for input_data, pos_rate, result_chart, targets in tqdm(train_data_loader, desc='train', ncols=80, disable=not is_tqdm):
             # データをGPUへ
             input_data = input_data.to(device)
             targets = targets.to(device)
@@ -89,16 +91,28 @@ def train(max_epoch=100, batch_size=16):
                 clip_grad_value_(net.parameters(), clip_value=2.0)
                 # パラメータ更新
                 optimizer.step()
-
+            
+            for bn in range(input_data.shape[0]):
+                tp_rate = metrics(pos_rate=pos_rate[bn], chart_after_trade=result_chart[bn], output=output[bn])
+                if tp_rate:
+                    epoch_metrics += tp_rate
+        
         if ((epoch+1) % 10 == 0):
             torch.save(net.state_dict(), 'deeplearning/weights/mymodel_' + str(epoch+1) + '.pth')
             torch.save(net.state_dict(), 'deeplearning/weights/latest.pth')
 
 
         # epochのphaseごとのloss
-        print('Epoch_TRAIN_Loss:{:.4f}'.format(epoch_loss))
+        print('Epoch_TRAIN_Loss: {:.4f}'.format(epoch_loss))
+        print('epoch_metrics: {:.2f}'.format(epoch_metrics))
+
 
 
 
 if __name__ == '__main__':
-    train(max_epoch=100, batch_size=128)
+    args = sys.argv
+    if len(args) > 2:
+        is_tqdm = args[1]
+        print(is_tqdm)
+    exit(0)
+    train(max_epoch=100, batch_size=32, is_tqdm=is_tqdm)

@@ -26,21 +26,13 @@ class FXDataset(data.Dataset):
         result_start_time = input_start_time + td(minutes=180)
         result_end_time = input_start_time + td(minutes=199)
         input_df = self.data_df.loc[input_start_time.strftime('%Y-%m-%d %H:%M:%S') : input_end_time.strftime('%Y-%m-%d %H:%M:%S')]
+        pos_rate = input_df.iloc[-1][4]
         input_tensor = torch.tensor(np.array(input_df), dtype=torch.float)
         input_tensor_transformed = torch.reshape(input_tensor - input_tensor[-1][-1], [1, -1]).squeeze(0)
         result_df = self.data_df.loc[result_start_time.strftime('%Y-%m-%d %H:%M:%S') : result_end_time.strftime('%Y-%m-%d %H:%M:%S')]
-        # print(len(result_df))
         result_tensor = torch.tensor(np.array(result_df), dtype=torch.float)
-        result_tensor_transformed = torch.reshape(result_tensor - result_tensor[-1][-1], [1, -1]).squeeze(0)
         target_tensor = torch.tensor(gt[1], dtype=torch.float)
-        return input_tensor_transformed, result_tensor_transformed, target_tensor
-
-# class DataTransformer():
-#     def __init__(self):
-#         pass
-#     def __call__(self):
-#         pass
-
+        return input_tensor_transformed, pos_rate, result_tensor, target_tensor
 
 
 if __name__ == '__main__':
