@@ -35,9 +35,10 @@ def train(max_epoch=100, batch_size=16, is_tqdm=True):
     dataset = FXDataset(gt_file_path, data_file_path)
     train_size = int(dataset.__len__() * 0.8)
     test_size = dataset.__len__() - train_size
-    train_dataset, test_dataset = data.random_split(dataset, [train_size, test_size], generator=torch.Generator().manual_seed(42))
-    train_data_loader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    # test_data_loader = data.DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
+    train_dataset, val_dataset = data.random_split(dataset, [train_size, test_size], generator=torch.Generator().manual_seed(42))
+    train_dataloader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_dataloader = data.DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
+    dataloaders_dict = {'train': train_dataloader, 'val': val_dataloader}
 
     # モデル
     net = MyModel0()
@@ -62,49 +63,53 @@ def train(max_epoch=100, batch_size=16, is_tqdm=True):
     net.to(device)
 
     for epoch in range(max_epoch):
-        print('-------------')
+        print('-----------------')
         print('Epoch {}/{}'.format(epoch+1, max_epoch))
 
-        # モデルを訓練モードに
-        # net.train()
+        for phase in ['train', 'val']:
+            if phase == 'train':
+                net.train()
+            else:
+                print('---')
+                net.eval()
 
-        epoch_loss = 0.0
-        epoch_metrics = 0.0
+            epoch_loss = 0.0
+            epoch_metrics = 0.0
 
-        for input_data, pos_rate, result_chart, targets in tqdm(train_data_loader, desc='train', ncols=80, disable=not is_tqdm):
-            # データをGPUへ
-            input_data = input_data.to(device)
-            targets = targets.to(device)
+            for input_data, pos_rate, result_chart, targets in tqdm(dataloaders_dict[phase], desc=phase, ncols=80, disable=not is_tqdm):
+                # データをGPUへ
+                input_data = input_data.to(device)
+                targets = targets.to(device)
 
-            # optimizerを初期化
-            optimizer.zero_grad()
+                # optimizerを初期化
+                optimizer.zero_grad()
 
-            # 順伝搬（forward）計算
-            with torch.set_grad_enabled(True):
-                output = net(input_data)
-                is_trade_loss, longshort_loss = criterion(output, targets)
-                loss = is_trade_loss + longshort_loss
-                # 勾配の計算 
-                loss.backward()
-                epoch_loss += loss
-                # 勾配が大きくなりすぎると計算が不安定になるので、clipで最大でも勾配2.0に留める
-                clip_grad_value_(net.parameters(), clip_value=2.0)
-                # パラメータ更新
-                optimizer.step()
-            
-            for bn in range(input_data.shape[0]):
-                tp_rate = metrics(pos_rate=pos_rate[bn], chart_after_trade=result_chart[bn], output=output[bn])
-                if tp_rate:
+                # 順伝搬（forward）計算
+                with torch.set_grad_enabled(True):
+                    output = net(input_data)
+                    is_trade_loss, longshort_loss = criterion(output, targets)
+                    loss = is_trade_loss + longshort_loss
+                    epoch_loss += loss.item()
+
+                    if phase == 'train':
+                        # 勾配の計算 
+                        loss.backward()
+                        # 勾配が大きくなりすぎると計算が不安定になるので、clipで最大でも勾配2.0に留める
+                        clip_grad_value_(net.parameters(), clip_value=2.0)
+                        # パラメータ更新
+                        optimizer.step()
+                
+                for bn in range(input_data.shape[0]):
+                    tp_rate = metrics(pos_rate=pos_rate[bn], chart_after_trade=result_chart[bn], output=output[bn])
                     epoch_metrics += tp_rate
-        
-        if ((epoch+1) % 10 == 0):
-            torch.save(net.state_dict(), 'deeplearning/weights/mymodel_' + str(epoch+1) + '.pth')
-            torch.save(net.state_dict(), 'deeplearning/weights/latest.pth')
+            
+            if ((epoch+1) % 10 == 0):
+                torch.save(net.state_dict(), 'deeplearning/weights/mymodel_' + str(epoch+1) + '.pth')
+                torch.save(net.state_dict(), 'deeplearning/weights/latest.pth')
 
-
-        # epochのphaseごとのloss
-        print('Epoch_TRAIN_Loss: {:.4f}'.format(epoch_loss))
-        print('epoch_metrics: {:.2f}'.format(epoch_metrics))
+            # epochのphaseごとのloss
+            print('Epoch_Loss: {:.4f}'.format(epoch_loss))
+            print('epoch_metrics: {:.2f}'.format(epoch_metrics))
 
 
 

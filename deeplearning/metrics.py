@@ -1,21 +1,17 @@
 import random
 
-import mplfinance as mpf
 import numpy as np
-# import pandas as pd
 import torch
 import torch.backends.cudnn
 from dataset import FXDataset
 from torch.utils import data
 from tqdm import tqdm
 
-# from datetime import timedelta as td
-
 def metrics(pos_rate, chart_after_trade, output):
     """
     is_long: 1:long, 0:no_pos, -1:short
     """
-    tp_rate = None
+    tp_rate = 0
     is_long = 0
     if output[0][0] > 0.5:
         if output[1][0] > 0.5:
@@ -32,6 +28,7 @@ def metrics(pos_rate, chart_after_trade, output):
                 tp_rate = (ohlc[3] - pos_rate) * is_long
         if not tp_rate:
             tp_rate = (chart_after_trade[-1][3] - pos_rate) * is_long
+        tp_rate = tp_rate.item()
     return tp_rate
 
 
